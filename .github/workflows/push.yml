@@ -26,7 +26,6 @@ jobs:
           mode: 'onefile'
           enable-plugins: tk-inter
           windows-icon-from-ico: 'autoappraiser/res/icon.ico'
-          windows-console-mode: 'disable'
           include-data-dir: 'autoappraiser/res=res'
           output-file: 'AutoAppraiser.exe'
 
