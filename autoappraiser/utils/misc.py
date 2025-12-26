@@ -1,5 +1,7 @@
 import time
 import customtkinter as ctk
+import sys
+import os
 import winrt.windows.graphics.imaging as imaging
 import winrt.windows.storage.streams as streams
 from PIL import Image
