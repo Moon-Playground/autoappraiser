@@ -28,6 +28,7 @@ from pynput.mouse import Controller
 
 from autoappraiser.core.capture_box import CaptureBox
 from autoappraiser.utils import Utils
+from rapidfuzz import process
 
 class AutoAppraiser(Utils):
     def __init__(self):
@@ -165,6 +166,7 @@ class AutoAppraiser(Utils):
             try:
                 # Run async OCR in a synchronous context
                 text = asyncio.run(self.read_frame(frame))
+                frame = self.apply_green_filter(frame)
                 #print(f"OCR Result: '{text}'")
                 self.show_capture_dialog(frame, text)
             except Exception as e:
@@ -342,30 +344,34 @@ class AutoAppraiser(Utils):
                 if frame is not None:
                     # Async call
                     result = asyncio.run(self.read_frame(frame))
+
+                    # Process result with rapidfuzz
+                    result = process.extractOne(result, self.lists)
+                    result = result[0]
+                    if not result:
+                        continue
                     
+                    found_match = False
                     selected_lists = [desc for desc, var in self.checkbox_vars.items() if var.get()]
-                    if selected_lists:
-                        found_match = False
-                        for desc in selected_lists:
-                            if re.search(rf'{desc}', result, re.IGNORECASE):
-                                # Stop the loop
-                                self.active.clear()
-                                self.mouse_position = None
-                                
-                                # Safely update GUI on main thread
-                                self.root.after(0, lambda: self.status_label.configure(text="Status: Inactive", text_color="#ff5555"))
-                                self.root.after(0, lambda d=desc: self.show_found_dialog(d))
-                                
-                                found_match = True
-                                break
+                    if result in selected_lists:
+                        # Stop the loop
+                        self.active.clear()
+                        self.mouse_position = None
                         
-                        if found_match:
-                            continue
+                        # Safely update GUI on main thread
+                        self.root.after(0, lambda: self.status_label.configure(text="Status: Inactive", text_color="#ff5555"))
+                        self.root.after(0, lambda d=result: self.show_found_dialog(d))
+                        
+                        found_match = True
+                        break
+                        
+                    if found_match:
+                        continue
 
             except Exception as e:
                 print(f"Error in worker: {e}")
                 time.sleep(1)
-                
+
             time.sleep(self.loop_interval / 1000)
 
     def show_capture_dialog(self, frame=None, text=None):
@@ -412,6 +418,12 @@ class AutoAppraiser(Utils):
         lbl_img.pack(padx=20, pady=20)
         
         lbl_text = ctk.CTkLabel(top, text=f"OCR Result:\n{text}", wraplength=350)
+        lbl_text.pack(padx=20, pady=(0, 20))
+
+        fuzz_text = process.extractOne(text, self.lists)
+        fuzz_text = fuzz_text[0]
+
+        lbl_text = ctk.CTkLabel(top, text=f"rapidfuzz result:\n{fuzz_text}", wraplength=350)
         lbl_text.pack(padx=20, pady=(0, 20))
 
     def show_found_dialog(self, text):
