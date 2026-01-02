@@ -7,5 +7,8 @@ winrt-runtime
 winrt-Windows.Graphics.Imaging
 winrt-Windows.Media.Ocr
 winrt-Windows.Storage.Streams
+winrt-Windows.Foundation
 Pillow
 tomlkit
+opencv-python
+numpy
