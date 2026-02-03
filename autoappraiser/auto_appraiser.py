@@ -166,7 +166,7 @@ class AutoAppraiser(Utils):
             try:
                 # Run async OCR in a synchronous context
                 text = asyncio.run(self.read_frame(frame))
-                frame = self.apply_green_filter(frame)
+                #frame = self.apply_green_filter(frame)
                 #print(f"OCR Result: '{text}'")
                 self.show_capture_dialog(frame, text)
             except Exception as e:
@@ -341,13 +341,15 @@ class AutoAppraiser(Utils):
                     result = asyncio.run(self.read_frame(frame))
 
                     # Workaround for "Today/Tonight have boosted chance to get Mutated fish" messages
-                    mutations = self.list.copy()
+                    mutations = self.lists.copy()
                     mutations.append("Mutated")
 
                     # Process result with rapidfuzz
                     result = process.extractOne(result, mutations)
-                    result = result[0]
+                    result, score = result
                     if not result:
+                        continue
+                    if score < 80:
                         continue
 
                     found_match = False
@@ -420,7 +422,12 @@ class AutoAppraiser(Utils):
         lbl_text.pack(padx=20, pady=(0, 20))
 
         fuzz_text = process.extractOne(text, self.lists)
-        fuzz_text = fuzz_text[0]
+        text = fuzz_text[0]
+        score = fuzz_text[1]
+        if not score > 80:
+            fuzz_text = ""
+        else:
+            fuzz_text = f"{text} ({score})"
 
         lbl_text = ctk.CTkLabel(top, text=f"rapidfuzz result:\n{fuzz_text}", wraplength=350)
         lbl_text.pack(padx=20, pady=(0, 20))

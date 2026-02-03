@@ -4,6 +4,7 @@ dist/
 *venv*/
 
 pyarmor.*
+*.bat
 *.pyc
 *.pyo
 *.pyd

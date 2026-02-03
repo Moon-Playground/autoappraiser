@@ -36,10 +36,11 @@ class OcrHandler:
                 
                 img = np.frombuffer(pixel_bytes, dtype=np.uint8).reshape((height, width, 4))
                 # Apply green filter (BGRA -> HSV -> Mask -> BGRA)
-                img = self.apply_green_filter(img, is_bgra=True)
+                #img = self.apply_green_filter(img, is_bgra=True)
             else:
                 # Frame is already numpy (from DXCAM, usually RGB)
-                img = self.apply_green_filter(frame, is_bgra=False)
+                #img = self.apply_green_filter(frame, is_bgra=False)
+                img = frame
 
             # 2. Convert back to SoftwareBitmap for Windows OCR
             # We can use the PIL path or create SoftwareBitmap directly
@@ -59,7 +60,12 @@ class OcrHandler:
             
             # 3. Recognize
             result = await ocr_engine.recognize_async(software_bitmap)
-            return result.text
+            text = result.text.strip()
+            if not text:
+                return ""
+            
+            # Get the last word from the result
+            return text.split()[-1]
 
         except Exception as e:
             print(f"OCR Internal Error: {e}")
