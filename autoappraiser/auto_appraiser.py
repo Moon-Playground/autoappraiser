@@ -332,50 +332,41 @@ class AutoAppraiser(Utils):
                 else:
                     self.appraise_normal()
 
-                # Give time for the GUI/Text to appear before capturing
-                time.sleep(0.8) 
-                
-                frame = self.capture_screen()
-                if frame is not None:
-                    # Async call
-                    result = asyncio.run(self.read_frame(frame))
+                # Process OCR only if a mutation is selected
+                if self.mutation_var.get():
+                    # Give time for the GUI/Text to appear before capturing
+                    time.sleep(0.8) 
+                    
+                    frame = self.capture_screen()
+                    if frame is not None:
+                        # Async call
+                        result = asyncio.run(self.read_frame(frame))
 
-                    # Extract names from lists (items can be strings or dicts)
-                    mutation_names = []
-                    for item in self.lists:
-                        if isinstance(item, dict):
-                            mutation_names.append(list(item.keys())[0])
-                        else:
-                            mutation_names.append(item)
+                        # Extract names from lists (items can be strings or dicts)
+                        mutation_names = []
+                        for item in self.lists:
+                            if isinstance(item, dict):
+                                mutation_names.append(list(item.keys())[0])
+                            else:
+                                mutation_names.append(item)
 
-                    # Workaround for "Today/Tonight have boosted chance to get Mutated fish" messages
-                    search_list = mutation_names.copy()
-                    search_list.append("Mutated")
+                        # Workaround for "Today/Tonight have boosted chance to get Mutated fish" messages
+                        search_list = mutation_names.copy()
+                        search_list.append("Mutated")
 
-                    # Process result with rapidfuzz
-                    extracted = process.extractOne(result, search_list)
-                    if not extracted:
-                        continue
-                        
-                    result_name, score = extracted[0], extracted[1]
-                    if score < 80:
-                        continue
-
-                    found_match = False
-                    if result_name == self.mutation_var.get():
-                        # Stop the loop
-                        self.active.clear()
-                        self.mouse_position = None
-                        
-                        # Safely update GUI on main thread
-                        self.root.after(0, lambda: self.status_label.configure(text="Status: Inactive", text_color="#ff5555"))
-                        self.root.after(0, lambda d=result_name: self.show_found_dialog(d))
-                        
-                        found_match = True
-                        continue
-
-                    if found_match:
-                        continue
+                        # Process result with rapidfuzz
+                        extracted = process.extractOne(result, search_list)
+                        if extracted:
+                            result_name, score = extracted[0], extracted[1]
+                            if score >= 80:
+                                if result_name == self.mutation_var.get():
+                                    # Stop the loop
+                                    self.active.clear()
+                                    self.mouse_position = None
+                                    
+                                    # Safely update GUI on main thread
+                                    self.root.after(0, lambda: self.status_label.configure(text="Status: Inactive", text_color="#ff5555"))
+                                    self.root.after(0, lambda d=result_name: self.show_found_dialog(d))
 
             except Exception as e:
                 print(f"Error in worker: {e}")
