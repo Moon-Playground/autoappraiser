@@ -166,7 +166,7 @@ class AutoAppraiser(Utils):
             try:
                 # Run async OCR in a synchronous context
                 text = asyncio.run(self.read_frame(frame))
-                frame = self.apply_green_filter(frame)
+                frame = self.apply_color_filter(frame)
                 #print(f"OCR Result: '{text}'")
                 self.show_capture_dialog(frame, text)
             except Exception as e:
@@ -211,11 +211,11 @@ class AutoAppraiser(Utils):
         self.mut_btn_frame = ctk.CTkFrame(self.tab_mutations, fg_color="transparent")
         self.mut_btn_frame.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
         
-        ctk.CTkButton(self.mut_btn_frame, text="Select All", command=self.select_all_mutations, height=24).pack(side="left", padx=2, expand=True, fill="x")
-        ctk.CTkButton(self.mut_btn_frame, text="Deselect All", command=self.deselect_all_mutations, height=24, fg_color="#555555", hover_color="#333333").pack(side="left", padx=2, expand=True, fill="x")
-        ctk.CTkButton(self.mut_btn_frame, text="Edit List", command=self.open_mutation_editor, height=24, fg_color="#3B8ED0", hover_color="#36719F").pack(side="left", padx=2, expand=True, fill="x")
+        ctk.CTkButton(self.mut_btn_frame, text="Clear Selection", command=self.deselect_all_mutations, height=24, fg_color="#555555", hover_color="#333333").pack(side="left", padx=2, expand=True, fill="x")
+        ctk.CTkButton(self.mut_btn_frame, text="Add", command=self.open_add_mutation_dialog, height=24, fg_color="#2b2b2b", border_width=1).pack(side="left", padx=2, expand=True, fill="x")
+        ctk.CTkButton(self.mut_btn_frame, text="Sync with Wiki", command=self.fetch_wiki_mutations, height=24, fg_color="#3B8ED0", hover_color="#36719F").pack(side="left", padx=2, expand=True, fill="x")
         
-        self.checkbox_vars = {}
+        self.mutation_var = ctk.StringVar(value="")
         self.populate_mutations()
 
         # -- Settings Tab --
@@ -340,26 +340,36 @@ class AutoAppraiser(Utils):
                     # Async call
                     result = asyncio.run(self.read_frame(frame))
 
+                    # Extract names from lists (items can be strings or dicts)
+                    mutation_names = []
+                    for item in self.lists:
+                        if isinstance(item, dict):
+                            mutation_names.append(list(item.keys())[0])
+                        else:
+                            mutation_names.append(item)
+
                     # Workaround for "Today/Tonight have boosted chance to get Mutated fish" messages
-                    mutations = self.list.copy()
-                    mutations.append("Mutated")
+                    search_list = mutation_names.copy()
+                    search_list.append("Mutated")
 
                     # Process result with rapidfuzz
-                    result = process.extractOne(result, mutations)
-                    result = result[0]
-                    if not result:
+                    extracted = process.extractOne(result, search_list)
+                    if not extracted:
+                        continue
+                        
+                    result_name, score = extracted[0], extracted[1]
+                    if score < 80:
                         continue
 
                     found_match = False
-                    selected_lists = [desc for desc, var in self.checkbox_vars.items() if var.get()]
-                    if result in selected_lists:
+                    if result_name == self.mutation_var.get():
                         # Stop the loop
                         self.active.clear()
                         self.mouse_position = None
                         
                         # Safely update GUI on main thread
                         self.root.after(0, lambda: self.status_label.configure(text="Status: Inactive", text_color="#ff5555"))
-                        self.root.after(0, lambda d=result: self.show_found_dialog(d))
+                        self.root.after(0, lambda d=result_name: self.show_found_dialog(d))
                         
                         found_match = True
                         continue
@@ -419,8 +429,15 @@ class AutoAppraiser(Utils):
         lbl_text = ctk.CTkLabel(top, text=f"OCR Result:\n{text}", wraplength=350)
         lbl_text.pack(padx=20, pady=(0, 20))
 
-        fuzz_text = process.extractOne(text, self.lists)
-        fuzz_text = fuzz_text[0]
+        mutation_names = [list(item.keys())[0] if isinstance(item, dict) else item for item in self.lists]
+        fuzz_result = process.extractOne(text, mutation_names)
+        if fuzz_result:
+            matched_name = fuzz_result[0]
+            score = fuzz_result[1]
+        if not score > 80:
+            fuzz_text = ""
+        else:
+            fuzz_text = f"{matched_name} ({score})"
 
         lbl_text = ctk.CTkLabel(top, text=f"rapidfuzz result:\n{fuzz_text}", wraplength=350)
         lbl_text.pack(padx=20, pady=(0, 20))

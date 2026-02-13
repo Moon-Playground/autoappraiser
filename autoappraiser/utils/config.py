@@ -31,11 +31,37 @@ class Config:
         },
         'mutations': {
             'lists': [
-                "Abyssal", "Albino", "Amber", "Crimson", "Darkened", "Electric",
-                "Fossilized", "Frozen", "Glossy", "Greedy", "Hexed", "Lunar",
-                "Midas", "Mosaic", "Mythical", "Negative", "Poisoned", "Scorched",
-                "Shiny", "Shrouded", "Silver", "Sinister", "Sparkling", "Spirit",
-                "Translucent", "Vined"
+                {"Abyssal": "#0c0fd4"},
+                {"Albino": "#fcfeff"},
+                {"Amber": "#ff7433"},
+                {"Big": "#8bff89"},
+                {"Boreal": "#c8aa90"},
+                {"Coral": "#de9bff"},
+                {"Crimson": "#c82f2f"},
+                {"Darkened": "#bbc5c8"},
+                {"Electric": "#fff563"},
+                {"Fossilized": "#d0b5ff"},
+                {"Frozen": "#83ffe6"},
+                {"Giant": "#8bff89"},
+                {"Glossy": "#92e2ff"},
+                {"Greedy": "#ffc226"},
+                {"Hexed": "#c80000"},
+                {"Lunar": "#bda9ff"},
+                {"Midas": "#ff9a47"},
+                {"Mosaic": "#fbc1ff"},
+                {"Mourned": "#0a1427"},
+                {"Mythical": "#ff5294"},
+                {"Negative": "#7567e2"},
+                {"Poisoned": "#8e65c8"},
+                {"Scorched": "#c85530"},
+                {"Serene": "#00ffe1"},
+                {"Shiny": "#fff0bc"},
+                {"Shrouded": "#a1c89e"},
+                {"Silver": "#ceeeff"},
+                {"Sparkling": "#fff0bc"},
+                {"Spirit": "#846dc8"},
+                {"Translucent": "#87ffbf"},
+                {"Vined": "#78ce7a"}
             ]
         },
         'ocr': {
@@ -46,11 +72,6 @@ class Config:
             'capture_y': 517
         }
     }
-    NEW_MUTATIONS = [
-        "Boreal",
-        "Coral",
-        "Mourned"
-    ]
 
     def save_settings(self, filepath="config.toml"):
         try:
@@ -111,20 +132,34 @@ class Config:
             tomlkit.dump(cfg_data, f)
 
     def load_config(self, filepath="config.toml"):
+        # map for lookups from DEFAULT_CONFIG
+        color_map = {list(m.keys())[0]: list(m.values())[0] for m in self.DEFAULT_CONFIG['mutations']['lists'] if isinstance(m, dict)}
+
         if os.path.exists(filepath):
             with open(filepath, "rb") as f:
                 cfg = tomllib.load(f)
-                for mutation in self.NEW_MUTATIONS:
-                    if mutation not in cfg['mutations']['lists']:
-                        cfg['mutations']['lists'].append(mutation)
+                
+                # Upgrade lists to dictionaries if they are strings
+                if 'mutations' in cfg and 'lists' in cfg['mutations']:
+                    new_lists = []
+                    for item in cfg['mutations']['lists']:
+                        if isinstance(item, str):
+                            color = color_map.get(item, False)
+                            new_lists.append({item: color})
+                        else:
+                            name = list(item.keys())[0]
+                            color = item[name]
+                            # Refresh if currently False or default white (if we have a color in map)
+                            if (color is False or color == "#FFFFFF") and name in color_map:
+                                item[name] = color_map[name]
+                            new_lists.append(item)
+                    cfg['mutations']['lists'] = new_lists
+
                 return cfg
         else:
             # Create config file if not exists
             try:
                 with open(filepath, "w") as f:
-                    for mutation in self.NEW_MUTATIONS:
-                        if mutation not in self.DEFAULT_CONFIG['mutations']['lists']:
-                            self.DEFAULT_CONFIG['mutations']['lists'].append(mutation)
                     tomlkit.dump(self.DEFAULT_CONFIG, f)
             except:
                 pass 
