@@ -30,39 +30,37 @@ class Config:
             'exit_app': 'F5'
         },
         'mutations': {
-            'lists': [
-                {"Abyssal": "#0c0fd4"},
-                {"Albino": "#fcfeff"},
-                {"Amber": "#ff7433"},
-                {"Big": "#8bff89"},
-                {"Boreal": "#c8aa90"},
-                {"Coral": "#de9bff"},
-                {"Crimson": "#c82f2f"},
-                {"Darkened": "#bbc5c8"},
-                {"Electric": "#fff563"},
-                {"Fossilized": "#d0b5ff"},
-                {"Frozen": "#83ffe6"},
-                {"Giant": "#8bff89"},
-                {"Glossy": "#92e2ff"},
-                {"Greedy": "#ffc226"},
-                {"Hexed": "#c80000"},
-                {"Lunar": "#bda9ff"},
-                {"Midas": "#ff9a47"},
-                {"Mosaic": "#fbc1ff"},
-                {"Mourned": "#0a1427"},
-                {"Mythical": "#ff5294"},
-                {"Negative": "#7567e2"},
-                {"Poisoned": "#8e65c8"},
-                {"Scorched": "#c85530"},
-                {"Serene": "#00ffe1"},
-                {"Shiny": "#fff0bc"},
-                {"Shrouded": "#a1c89e"},
-                {"Silver": "#ceeeff"},
-                {"Sparkling": "#fff0bc"},
-                {"Spirit": "#846dc8"},
-                {"Translucent": "#87ffbf"},
-                {"Vined": "#78ce7a"}
-            ]
+            "Abyssal": "#0c0fd4",
+            "Albino": "#fcfeff",
+            "Amber": "#ff7433",
+            "Big": "#8bff89",
+            "Boreal": "#c8aa90",
+            "Coral": "#de9bff",
+            "Crimson": "#c82f2f",
+            "Darkened": "#bbc5c8",
+            "Electric": "#fff563",
+            "Fossilized": "#d0b5ff",
+            "Frozen": "#83ffe6",
+            "Giant": "#8bff89",
+            "Glossy": "#92e2ff",
+            "Greedy": "#ffc226",
+            "Hexed": "#c80000",
+            "Lunar": "#bda9ff",
+            "Midas": "#ff9a47",
+            "Mosaic": "#fbc1ff",
+            "Mourned": "#0a1427",
+            "Mythical": "#ff5294",
+            "Negative": "#7567e2",
+            "Poisoned": "#8e65c8",
+            "Scorched": "#c85530",
+            "Serene": "#00ffe1",
+            "Shiny": "#fff0bc",
+            "Shrouded": "#a1c89e",
+            "Silver": "#ceeeff",
+            "Sparkling": "#fff0bc",
+            "Spirit": "#846dc8",
+            "Translucent": "#87ffbf",
+            "Vined": "#78ce7a"
         },
         'ocr': {
             'capture_mode': 'DXCAM',
@@ -118,9 +116,7 @@ class Config:
                 'totem_slot': self.totem_slot,
                 'totem_interval': self.totem_interval
             },
-            'mutations': {
-                'lists': self.lists
-            },
+            'mutations': self.lists,
             'hotkeys': {
                 'test_capture': self.hk_test,
                 'toggle_box': self.hk_box,
@@ -133,27 +129,37 @@ class Config:
 
     def load_config(self, filepath="config.toml"):
         # map for lookups from DEFAULT_CONFIG
-        color_map = {list(m.keys())[0]: list(m.values())[0] for m in self.DEFAULT_CONFIG['mutations']['lists'] if isinstance(m, dict)}
+        color_map = self.DEFAULT_CONFIG['mutations']
 
         if os.path.exists(filepath):
             with open(filepath, "rb") as f:
                 cfg = tomllib.load(f)
                 
                 # Upgrade lists to dictionaries if they are strings
-                if 'mutations' in cfg and 'lists' in cfg['mutations']:
-                    new_lists = []
-                    for item in cfg['mutations']['lists']:
-                        if isinstance(item, str):
-                            color = color_map.get(item, False)
-                            new_lists.append({item: color})
-                        else:
-                            name = list(item.keys())[0]
-                            color = item[name]
-                            # Refresh if currently False or default white (if we have a color in map)
+                if 'mutations' in cfg:
+                    raw_mutations = cfg['mutations']
+                    # Handle old format (mutations = { lists = [...] })
+                    if isinstance(raw_mutations, dict) and 'lists' in raw_mutations:
+                        raw_mutations = raw_mutations['lists']
+                    
+                    # Convert list format to flat dict if necessary
+                    if isinstance(raw_mutations, list):
+                        new_mutations = {}
+                        for item in raw_mutations:
+                            if isinstance(item, str):
+                                new_mutations[item] = color_map.get(item, "#FFFFFF")
+                            elif isinstance(item, dict):
+                                name = list(item.keys())[0]
+                                color = item[name]
+                                if (color is False or color == "#FFFFFF") and name in color_map:
+                                    color = color_map[name]
+                                new_mutations[name] = color
+                        cfg['mutations'] = new_mutations
+                    elif isinstance(raw_mutations, dict):
+                        # Just refresh colors if they are default
+                        for name, color in raw_mutations.items():
                             if (color is False or color == "#FFFFFF") and name in color_map:
-                                item[name] = color_map[name]
-                            new_lists.append(item)
-                    cfg['mutations']['lists'] = new_lists
+                                raw_mutations[name] = color_map[name]
 
                 return cfg
         else:

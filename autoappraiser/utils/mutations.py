@@ -21,13 +21,7 @@ class Mutations:
             return False
 
     def populate_mutations(self):
-        # Sort lists by name
-        def get_name(item):
-            if isinstance(item, dict):
-                return list(item.keys())[0]
-            return item
-
-        self.lists.sort(key=get_name)
+        # No need to sort a dict for display here, we can sort the items list during population
 
         # Preserve current selection state if possible
         current_selection = ""
@@ -43,13 +37,9 @@ class Mutations:
         for i in range(columns):
             self.mutation_frame.grid_columnconfigure(i, weight=1)
 
-        for i, item in enumerate(self.lists):
-            if isinstance(item, dict):
-                desc = list(item.keys())[0]
-                color = item[desc]
-            else:
-                desc = item
-                color = None
+        # Sort keys alphabetically for the UI
+        for i, desc in enumerate(sorted(self.lists.keys())):
+            color = self.lists[desc]
 
             # Handle special cases from colors.json (legacy/extended)
             if color in ["RAINBOW_SHADER", "PATTERN_VARIES", "INVERTED", "OPACITY_LOW"]:
@@ -114,7 +104,7 @@ class Mutations:
             # We look for rows that contain a mutation span and check for appraisability
             rows = re.findall(r"<tr>(.*?)</tr>", html, re.DOTALL)
             
-            new_lists = []
+            new_lists = {}
             seen_names = set()
             
             HARDCODED_COLORS = {
@@ -134,15 +124,13 @@ class Mutations:
                     display_name = name_match.group(2).strip()
                     
                     # Core Logic: Keep if appraisable=true OR it's a mutation we want to hardcode
-                    # Using regex to ensure we match the class attribute, not embedded CSS styles
                     is_appraisable = bool(re.search(r'class="[^"]*appraisable-true', row))
                     is_hardcoded = display_name in HARDCODED_COLORS
                     
                     if (is_appraisable or is_hardcoded) and display_name not in seen_names:
                         # Apply hardcoded colors for size/special muts, otherwise use wiki color
                         color = HARDCODED_COLORS.get(display_name, wiki_colors.get(key, "#FFFFFF"))
-                        
-                        new_lists.append({display_name: color})
+                        new_lists[display_name] = color
                         seen_names.add(display_name)
 
             if not new_lists:
@@ -168,7 +156,7 @@ class Mutations:
         if name and name.strip():
             name = name.strip()
             # Check if already in list
-            exists = any(name.lower() == (list(m.keys())[0].lower() if isinstance(m, dict) else m.lower()) for m in self.lists)
+            exists = name.lower() in [k.lower() for k in self.lists.keys()]
             if exists:
                 print(f"Mutation {name} already in list.")
                 return
@@ -227,7 +215,7 @@ class Mutations:
                     found = True
 
             # Even if not found on wiki, we add it with default white
-            self.lists.append({official_name: found_color})
+            self.lists[official_name] = found_color
             self.save_config()
             
             self.root.after(0, lambda: self.status_label.configure(text="Status: Inactive", text_color="#ff5555"))
@@ -243,7 +231,7 @@ class Mutations:
     def select_all_mutations(self):
         # For radio buttons, "select all" doesn't make sense. 
         if self.lists:
-            self.mutation_var.set(self.lists[0])
+            self.mutation_var.set(sorted(self.lists.keys())[0])
 
     def deselect_all_mutations(self):
         self.mutation_var.set("")

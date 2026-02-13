@@ -25,11 +25,8 @@ class OcrHandler:
             target_hex = None
             if hasattr(self, 'mutation_var') and hasattr(self, 'lists'):
                 selected_name = self.mutation_var.get()
-                if selected_name:
-                    for item in self.lists:
-                        if isinstance(item, dict) and selected_name in item:
-                            target_hex = item[selected_name]
-                            break
+                if selected_name and selected_name in self.lists:
+                    target_hex = self.lists[selected_name]
 
             # 1. Convert to numpy array (OpenCV format)
             if isinstance(frame, imaging.SoftwareBitmap):

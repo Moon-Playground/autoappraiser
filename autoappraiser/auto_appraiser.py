@@ -100,7 +100,7 @@ class AutoAppraiser(Utils):
         self.totem_slot = config['appraise']['totem_slot']
         self.totem_interval = config['appraise']['totem_interval']
         self.last_totem = None
-        self.lists = config['mutations']['lists']
+        self.lists = config['mutations']
 
         # Load Hotkeys safely
         hotkeys_conf = config.get('hotkeys', {})
@@ -342,16 +342,8 @@ class AutoAppraiser(Utils):
                         # Async call
                         result = asyncio.run(self.read_frame(frame))
 
-                        # Extract names from lists (items can be strings or dicts)
-                        mutation_names = []
-                        for item in self.lists:
-                            if isinstance(item, dict):
-                                mutation_names.append(list(item.keys())[0])
-                            else:
-                                mutation_names.append(item)
-
                         # Workaround for "Today/Tonight have boosted chance to get Mutated fish" messages
-                        search_list = mutation_names.copy()
+                        search_list = list(self.lists.keys())
                         search_list.append("Mutated")
 
                         # Process result with rapidfuzz
@@ -420,7 +412,7 @@ class AutoAppraiser(Utils):
         lbl_text = ctk.CTkLabel(top, text=f"OCR Result:\n{text}", wraplength=350)
         lbl_text.pack(padx=20, pady=(0, 20))
 
-        mutation_names = [list(item.keys())[0] if isinstance(item, dict) else item for item in self.lists]
+        mutation_names = list(self.lists.keys())
         fuzz_result = process.extractOne(text, mutation_names)
         if fuzz_result:
             matched_name = fuzz_result[0]
