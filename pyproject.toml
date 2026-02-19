@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoappraiser"
+version = "1.0.0"
+description = "Auto Appraiser for Roblox Fisch"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+]
+dependencies = [
+    "customtkinter",
+    "dxcam_cpp",
+    "mss",
+    "keyboard",
+    "pydirectinput",
+    "winrt-runtime",
+    "winrt-Windows.Graphics.Imaging",
+    "winrt-Windows.Media.Ocr",
+    "winrt-Windows.Storage.Streams",
+    "winrt-Windows.Foundation",
+    "Pillow",
+    "tomlkit",
+    "opencv-python",
+    "numpy",
+    "rapidfuzz",
+]
+
+[project.scripts]
+autoappraiser = "autoappraiser.__main__:main"
+
+[tool.setuptools]
+packages = ["autoappraiser"]
