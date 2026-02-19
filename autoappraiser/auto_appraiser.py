@@ -43,7 +43,7 @@ class AutoAppraiser(Utils):
 
         # Set Window Icon with robust path handling
         self.root.after(200, lambda: self._set_icon())
-        
+
         self.capture_box = CaptureBox(
             box_color="blue",
             box_alpha=0.3,
@@ -101,6 +101,7 @@ class AutoAppraiser(Utils):
         self.totem_interval = config['appraise']['totem_interval']
         self.last_totem = None
         self.lists = config['mutations']
+        self.first_loop = True
 
         # Load Hotkeys safely
         hotkeys_conf = config.get('hotkeys', {})
@@ -147,6 +148,7 @@ class AutoAppraiser(Utils):
             self.active.clear()
             self.status_label.configure(text="Status: Inactive", text_color="#ff5555")
             self.mouse_position = None
+            self.first_loop = True
         else:
             self.active.set()
             self.status_label.configure(text="Status: Active", text_color="#2cc985")
@@ -322,7 +324,7 @@ class AutoAppraiser(Utils):
                 if self.mouse_position is None:
                     self.mouse_position = pydirectinput.position()
 
-                if self.auto_totem:
+                if self.auto_totem and not self.first_loop:
                     self.do_totem(self.mouse_position)
 
                 if self.use_gp: # TODO: implement gp appraise
@@ -359,6 +361,7 @@ class AutoAppraiser(Utils):
                                     # Safely update GUI on main thread
                                     self.root.after(0, lambda: self.status_label.configure(text="Status: Inactive", text_color="#ff5555"))
                                     self.root.after(0, lambda d=result_name: self.show_found_dialog(d))
+                self.first_loop = False
 
             except Exception as e:
                 print(f"Error in worker: {e}")
