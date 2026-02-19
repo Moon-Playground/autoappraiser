@@ -2,6 +2,7 @@ import os
 import sys
 import tomlkit
 import tomllib
+import platform
 
 class Config:
     DEFAULT_CONFIG = {
@@ -67,7 +68,8 @@ class Config:
             'capture_width': 326,
             'capture_height': 98,
             'capture_x': 639,
-            'capture_y': 517
+            'capture_y': 517,
+            'ocr_engine': 'WinRT' if platform.system() == 'Windows' else 'Tesseract'
         }
     }
 
@@ -84,6 +86,8 @@ class Config:
             if self.capture_mode != self.capture_mode_var.get():
                 self.switch_camera()
             self.capture_mode = self.capture_mode_var.get()
+            self.ocr_engine_type = self.ocr_engine_var.get()
+            self.ocr_engine = self.init_ocr_engine()
 
             self.save_config(filepath)
         except ValueError:
@@ -96,7 +100,8 @@ class Config:
                 'capture_width': self.capture_box.capture_width,
                 'capture_height': self.capture_box.capture_height,
                 'capture_x': self.capture_box.capture_x,
-                'capture_y': self.capture_box.capture_y
+                'capture_y': self.capture_box.capture_y,
+                'ocr_engine': self.ocr_engine_type
             },
             'gp': {
                 'enabled': self.use_gp,

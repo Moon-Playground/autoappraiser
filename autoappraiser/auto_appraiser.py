@@ -12,20 +12,30 @@ and application logic. Most functionality is inherited from utility modules:
 - Misc: Miscellaneous helper functions
 """
 
+import platform
 import asyncio
 import customtkinter as ctk
-import dxcam_cpp as dxcam
+
+# Platform detection
+IS_WINDOWS = platform.system() == "Windows"
+
+if IS_WINDOWS:
+    try:
+        import dxcam_cpp as dxcam
+    except ImportError:
+        IS_WINDOWS = False
 import mss
 import os
 import re
 import threading
 import time
-import winrt.windows.graphics.imaging as imaging
-import winrt.windows.storage.streams as streams
-import winrt.windows.foundation
+if IS_WINDOWS:
+    import winrt.windows.graphics.imaging as imaging
+    import winrt.windows.storage.streams as streams
+    import winrt.windows.foundation
+    import pydirectinput
 
 from PIL import Image
-import pydirectinput
 
 from autoappraiser.core.capture_box import CaptureBox
 from autoappraiser.utils import Utils
@@ -85,6 +95,7 @@ class AutoAppraiser(Utils):
         self.capture_box.capture_height = config['ocr']['capture_height']
         self.capture_box.capture_x = config['ocr']['capture_x']
         self.capture_box.capture_y = config['ocr']['capture_y']
+        self.ocr_engine_type = config['ocr'].get('ocr_engine', 'WinRT' if IS_WINDOWS else 'Tesseract')
         self.use_gp = config['gp']['enabled']
         self.gp_box.capture_width = config['gp']['capture_width']
         self.gp_box.capture_height = config['gp']['capture_height']
@@ -110,10 +121,12 @@ class AutoAppraiser(Utils):
         self.hk_action = hotkeys_conf.get('toggle_action', 'F4')
         self.hk_exit = hotkeys_conf.get('exit_app', 'F5')
 
-        if self.capture_mode == "DXCAM":
+        if self.capture_mode == "DXCAM" and IS_WINDOWS:
             self.camera = dxcam.create()
-        elif self.capture_mode == "MSS":
+        elif self.capture_mode == "MSS" or (self.capture_mode == "DXCAM" and not IS_WINDOWS):
             self.camera = mss.mss()
+            if not IS_WINDOWS:
+                self.capture_mode = "MSS" # Force MSS on Linux
         # Initialize OCR engine
         self.ocr_engine = self.init_ocr_engine()
 
@@ -246,8 +259,14 @@ class AutoAppraiser(Utils):
         #gp_switch.grid(row=2, column=1, padx=10, pady=15, sticky="ew")
         ctk.CTkLabel(self.controls_frame, text="Gamepass not supported yet").grid(row=2, column=1, padx=10, pady=15, sticky="ew")
 
+        # OCR Engine
+        ctk.CTkLabel(self.controls_frame, text="OCR Engine:").grid(row=3, column=0, padx=15, pady=15, sticky="w")
+        self.ocr_engine_var = ctk.StringVar(value=self.ocr_engine_type)
+        ocr_options = ["WinRT", "Tesseract"] if IS_WINDOWS else ["Tesseract"]
+        ctk.CTkOptionMenu(self.controls_frame, values=ocr_options, variable=self.ocr_engine_var).grid(row=3, column=1, padx=10, pady=15, sticky="ew")
+
         # Save Button
-        ctk.CTkButton(self.controls_frame, text="Save Settings", command=self.save_settings).grid(row=3, column=0, columnspan=2, pady=20)
+        ctk.CTkButton(self.controls_frame, text="Save Settings", command=self.save_settings).grid(row=4, column=0, columnspan=2, pady=20)
 
         self.controls_frame.grid_columnconfigure(1, weight=1)
 
@@ -322,7 +341,7 @@ class AutoAppraiser(Utils):
             self.active.wait()
             try:
                 if self.mouse_position is None:
-                    self.mouse_position = pydirectinput.position()
+                    self.mouse_position = self._get_position()
 
                 if self.auto_totem and not self.first_loop:
                     self.do_totem(self.mouse_position)
@@ -381,8 +400,8 @@ class AutoAppraiser(Utils):
             return
 
         # Convert frame to PIL Image
-        if isinstance(frame, imaging.SoftwareBitmap):
-            # Handle SoftwareBitmap (MSS mode)
+        if IS_WINDOWS and isinstance(frame, imaging.SoftwareBitmap):
+            # Handle SoftwareBitmap (MSS mode Windows)
             width = frame.pixel_width
             height = frame.pixel_height
             
@@ -397,8 +416,10 @@ class AutoAppraiser(Utils):
             reader.read_bytes(pixel_bytes)
             
             # Create PIL Image (BGRA -> RGBA/RGB)
-            # MSS/WinRT is usually BGRA8
             img = Image.frombytes('RGBA', (width, height), pixel_bytes, 'raw', 'BGRA')
+        elif isinstance(frame, Image.Image):
+            # Handle PIL Image (MSS mode Linux)
+            img = frame
         else:
             # Handle Numpy array (DXCAM mode)
             img = Image.fromarray(frame)

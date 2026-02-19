@@ -1,21 +1,22 @@
 # 🎮 AutoAppraiser
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![OS](https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+[![OS](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-0078D4?logo=windows&logoColor=white)](https://www.microsoft.com/windows)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**AutoAppraiser** is a high-performance automation tool designed for **Fisch (Roblox)**. It utilizes advanced OCR techniques and fast screen capture to automate the appraisal process, allowing you to filter for specific fish mutations with extreme precision and speed.
+**AutoAppraiser** is a high-performance automation tool designed for **Fisch (Roblox)**. It utilizes advanced OCR techniques and fast screen capture to automate the appraisal process, allowing you to filter for specific fish mutations with extreme precision and speed. Now supporting both **Windows** and **Linux**!
 
 ---
 
 ## ✨ Key Features
 
--   ⚡ **Turbo Capture**: Supports both `DXCAM` (NVIDIA/AMD) and `MSS` for near-instant screen recognition.
--   👁️ **Windows Runtime OCR**: Leverages native Windows OCR for high-accuracy text detection without external dependencies like Tesseract.
+-   ⚡ **Turbo Capture**: Supports both `DXCAM` (Windows/NVIDIA/AMD) and `MSS` (Cross-platform) for near-instant screen recognition.
+-   👁️ **Dual OCR Support**: 
+    -   **Windows**: Native Windows Runtime OCR (High-accuracy, no dependencies).
+    -   **Linux**: Tesseract OCR (Robust, open-source).
 -   🎯 **Overlay Region Selector**: A transparent, draggable, and resizable overlay to precisely define your capture area.
--   🧬 **Mutation Filtering**: fully customizable list of mutations to keep—stop automatically when you find that "Abyssal" or "Celestial" fish!
+-   🧬 **Mutation Filtering**: Fully customizable list of mutations to keep—stop automatically when you find that "Abyssal" or "Celestial" fish!
 -   ⌨️ **Global Hotkeys**: Control the application (Toggle Overlay, Start/Stop, Force Exit) from anywhere using customizable keys.
--   🏗️ **Modular Architecture**: Clean, maintainable codebase designed for easy extension and updates.
 
 ---
 
@@ -23,16 +24,16 @@
 
 ### Prerequisites
 
--   **Windows 10/11** (Required for Windows Runtime OCR)
 -   **Python 3.10 or higher**
+-   **Windows**:
+    -   Native **Windows Runtime OCR** (Recommended, no extra install).
+    -   **Tesseract OCR** (Optionally, as an alternative/fallback. Requires Tesseract to be installed on your system).
+-   **Linux**:
+    -   `tesseract-ocr` (e.g., `sudo apt install tesseract-ocr`)
+    -   `Tkinter` (e.g., `sudo apt install python3-tk`)
+    -   X11 Environment (Wayland support varies by distro)
 
 ### Installation
-
-#### Pre-built Executable
-
-Download the latest release from [Releases](https://github.com/Moon-Playground/fisch-autoappraiser/releases) and run the executable.
-
-#### From Source
 
 1.  **Clone the repository:**
     ```bash
@@ -41,9 +42,14 @@ Download the latest release from [Releases](https://github.com/Moon-Playground/f
     ```
 
 2.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+    -   **Windows**:
+        ```bash
+        pip install ".[windows]"
+        ```
+    -   **Linux**:
+        ```bash
+        pip install ".[linux]"
+        ```
 
 ### Running the App
 

@@ -15,20 +15,30 @@ classifiers = [
 ]
 dependencies = [
     "customtkinter",
-    "dxcam_cpp",
     "mss",
     "keyboard",
-    "pydirectinput",
-    "winrt-runtime",
-    "winrt-Windows.Graphics.Imaging",
-    "winrt-Windows.Media.Ocr",
-    "winrt-Windows.Storage.Streams",
-    "winrt-Windows.Foundation",
     "Pillow",
     "tomlkit",
     "opencv-python",
     "numpy",
     "rapidfuzz",
+    "pytesseract"
+]
+
+[project.optional-dependencies]
+windows = [
+    "dxcam_cpp",
+    "pydirectinput",
+    "winrt-runtime",
+    "winrt-Windows.Graphics.Imaging",
+    "winrt-Windows.Media.Ocr",
+    "winrt-Windows.Storage.Streams",
+    "winrt-Windows.Foundation"
+]
+
+linux = [
+    "pyautogui",
+    "pynput"
 ]
 
 [project.scripts]

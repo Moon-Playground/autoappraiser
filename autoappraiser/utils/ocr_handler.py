@@ -1,20 +1,67 @@
 import asyncio
 import io
-import winrt.windows.media.ocr as ocr
-import winrt.windows.graphics.imaging as imaging
-import winrt.windows.storage.streams as streams
-
+import platform
+import numpy as np
 from PIL import Image
 import cv2
-import numpy as np
+
+# Platform specific imports
+IS_WINDOWS = platform.system() == "Windows"
+
+if IS_WINDOWS:
+    try:
+        import winrt.windows.media.ocr as ocr
+        import winrt.windows.graphics.imaging as imaging
+        import winrt.windows.storage.streams as streams
+    except ImportError:
+        IS_WINDOWS = False
+
+if not IS_WINDOWS:
+    try:
+        import pytesseract
+    except ImportError:
+        pass
+else:
+    # On Windows, we might need to specify the path to Tesseract
+    try:
+        import pytesseract
+        
+        def _find_tesseract():
+            import os
+            common_paths = [
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                os.path.join(os.environ.get("USERPROFILE", ""), r"AppData\Local\Tesseract-OCR\tesseract.exe")
+            ]
+            for path in common_paths:
+                if os.path.exists(path):
+                    return path
+            return None
+
+        tess_path = _find_tesseract()
+        if tess_path:
+            pytesseract.pytesseract.tesseract_cmd = tess_path
+    except ImportError:
+        pass
 
 
 class OcrHandler:
     def init_ocr_engine(self):
+        engine_type = getattr(self, 'ocr_engine_type', 'WinRT' if IS_WINDOWS else 'Tesseract')
+        
+        if engine_type == 'WinRT' and IS_WINDOWS:
+            try:
+                return ocr.OcrEngine.try_create_from_user_profile_languages()
+            except Exception as e:
+                print(f"Error initializing Windows OCR: {e}")
+                return None
+        
+        # Fallback to Tesseract
         try:
-            return ocr.OcrEngine.try_create_from_user_profile_languages()
-        except Exception as e:
-            print(f"Error initializing OCR: {e}")
+            import pytesseract
+            return "pytesseract"
+        except ImportError:
+            print("Pytesseract not found. Please install it.")
             return None
 
     async def recognize_frame(self, ocr_engine, frame):
@@ -29,7 +76,7 @@ class OcrHandler:
                     target_hex = self.lists[selected_name]
 
             # 1. Convert to numpy array (OpenCV format)
-            if isinstance(frame, imaging.SoftwareBitmap):
+            if IS_WINDOWS and isinstance(frame, imaging.SoftwareBitmap):
                 # Convert SoftwareBitmap to numpy (BGRA)
                 width = frame.pixel_width
                 height = frame.pixel_height
@@ -44,32 +91,50 @@ class OcrHandler:
                 img = np.frombuffer(pixel_bytes, dtype=np.uint8).reshape((height, width, 4))
                 # Apply color filter
                 img = self.apply_color_filter(img, target_hex, is_bgra=True)
-            else:
-                # Frame is already numpy (from DXCAM, usually RGB)
+            elif isinstance(frame, np.ndarray):
+                # Frame is already numpy (from DXCAM or MSS on Linux/Fallback)
                 img = self.apply_color_filter(frame, target_hex, is_bgra=False)
+            else:
+                # Fallback for PIL Image (from MSS on Linux)
+                img = np.array(frame)
+                img = self.apply_color_filter(img, target_hex, is_bgra=False)
 
-            # 2. Convert back to SoftwareBitmap for Windows OCR
-            # If image is BGRA or RGB, convert to RGB for PIL
-            if img.shape[2] == 4: # BGRA
-                pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGRA2RGB))
-            else: # RGB
-                pil_img = Image.fromarray(img)
-            
-            img_byte_arr = io.BytesIO()
-            pil_img.save(img_byte_arr, format='PNG')
-            img_bytes = img_byte_arr.getvalue()
-            
-            stream = streams.InMemoryRandomAccessStream()
-            writer = streams.DataWriter(stream.get_output_stream_at(0))
-            writer.write_bytes(img_bytes)
-            await writer.store_async()
+            # 2. Recognize
+            if IS_WINDOWS and ocr_engine != "pytesseract":
+                # Convert back to SoftwareBitmap for Windows OCR
+                if img.shape[2] == 4: # BGRA
+                    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGRA2RGB))
+                else: # RGB
+                    pil_img = Image.fromarray(img)
+                
+                img_byte_arr = io.BytesIO()
+                pil_img.save(img_byte_arr, format='PNG')
+                img_bytes = img_byte_arr.getvalue()
+                
+                stream = streams.InMemoryRandomAccessStream()
+                writer = streams.DataWriter(stream.get_output_stream_at(0))
+                writer.write_bytes(img_bytes)
+                await writer.store_async()
 
-            decoder = await imaging.BitmapDecoder.create_async(stream)
-            software_bitmap = await decoder.get_software_bitmap_async()
-            
-            # 3. Recognize
-            result = await ocr_engine.recognize_async(software_bitmap)
-            return result.text
+                decoder = await imaging.BitmapDecoder.create_async(stream)
+                software_bitmap = await decoder.get_software_bitmap_async()
+                
+                result = await ocr_engine.recognize_async(software_bitmap)
+                return result.text
+            else:
+                # Use Tesseract for Linux or Fallback
+                if img.shape[2] == 4: # BGRA/RGBA
+                    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGRA2RGB))
+                else:
+                    pil_img = Image.fromarray(img)
+                
+                # Tesseract is synchronous, but we are in an async method
+                text = await asyncio.to_thread(pytesseract.image_to_string, pil_img)
+                return text.strip()
+
+        except Exception as e:
+            print(f"OCR Internal Error: {e}")
+            return ""
 
         except Exception as e:
             print(f"OCR Internal Error: {e}")
